@@ -2,6 +2,9 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torchvision import datasets, transforms
+from torch import optim
+import helper
+import matplotlib
 
 # Define a transform to normalize the data
 transform = transforms.Compose([transforms.ToTensor(),
@@ -19,17 +22,37 @@ model = nn.Sequential(nn.Linear(784, 128),
                       nn.Linear(64, 10),
                       nn.LogSoftmax(dim=1))
 
-# Define the loss
-criterion = nn.CrossEntropyLoss()
+criterion = nn.NLLLoss()
+optimizer = optim.SGD(model.parameters(), lr=0.003)
 
-# Get our data
+epochs = 5
+
+for e in range(epochs):
+    running_loss = 0
+    for images, labels in trainloader:
+        images = images.view(images.shape[0], -1)
+        optimizer.zero_grad()
+        logits = model(images)
+        loss = criterion(logits, labels)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+    else:
+        print(f"Training loss: {running_loss/len(trainloader)}")
+
 images, labels = next(iter(trainloader))
-# Flatten images
-images = images.view(images.shape[0], -1)
 
-# Forward pass, get our logits
-logits = model(images)
-# Calculate the loss with the logits and the labels
-loss = criterion(logits, labels)
+img = images[0].view(1, 784)
+# Turn off gradients to speed up this part
+with torch.no_grad():
+    logits = model.forward(img)
 
-print(loss)
+# Output of the network are logits, need to take softmax for probabilities
+ps = F.softmax(logits, dim=1)
+helper.view_classify(img.view(1, 28, 28), ps)
+
+
+
+
+
